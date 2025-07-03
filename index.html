@@ -516,7 +516,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script>
         // ⚠️ สำคัญ: ใส่ URL ของ Google Apps Script Web App ที่ Deploy แล้วตรงนี้
-        const API_URL = 'https://script.google.com/macros/s/AKfycbz7asTzwkXCk2wFPtxpw3drIAuWr8ysY9LGXignJ8ywsoLPkF55NqZZr8J8H05cq2u6/exec';
+        const API_URL = 'https://script.google.com/macros/s/AKfycbziuXT7-szA73AxowQbgNwOlk9DmX6S8ekPtbB4qL3pXnHkRmmV7OKcW_2My4Hmf7n1/exec';
         
         // Global variables
         let menuItems = [];
@@ -529,7 +529,7 @@
 
         // Check if API is configured
         function checkAPIConfiguration() {
-            isAPIConfigured = API_URL !== 'https://script.google.com/macros/s/AKfycbz7asTzwkXCk2wFPtxpw3drIAuWr8ysY9LGXignJ8ywsoLPkF55NqZZr8J8H05cq2u6/exec' && API_URL.includes('script.google.com');
+            isAPIConfigured = API_URL !== 'https://script.google.com/macros/s/AKfycbziuXT7-szA73AxowQbgNwOlk9DmX6S8ekPtbB4qL3pXnHkRmmV7OKcW_2My4Hmf7n1/exec' && API_URL.includes('script.google.com');
             
             const alertElement = document.getElementById('apiSetupAlert');
             const statusElement = document.getElementById('apiStatus');
