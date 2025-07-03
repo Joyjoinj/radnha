@@ -506,7 +506,7 @@
 
         // Check if API is configured
         function checkAPIConfiguration() {
-            isAPIConfigured = API_URL !== 'https://script.google.com/macros/s/AKfycbwoGgoTYQ2J7syqkIM1odZxYkaVe_PLgUcKnXITTL46PLkQVmufpaCMtsAe6Rc1yZOS/exec' && API_URL.trim() !== '';
+            isAPIConfigured = API_URL !== 'https://script.google.com/macros/s/AKfycbwcWPzlEnMNL43u3v5eFKja3tlTXKg3lae0Lxfya-pVg0VAH7vBMPFYKKcy53hE-72a/exec' && API_URL.trim() !== '';
             
             const alertElement = document.getElementById('apiSetupAlert');
             const statusElement = document.getElementById('apiStatus');
@@ -524,7 +524,7 @@
             return isAPIConfigured;
         }
 
-        // API Functions with improved error handling
+        // API Functions - ใช้ fetch ธรรมดาสำหรับทั้ง GET และ POST
         async function callAPI(action, data = {}) {
             if (!isAPIConfigured) {
                 console.log('API not configured, working offline');
@@ -546,7 +546,6 @@
                     body: JSON.stringify(payload)
                 });
 
-                // Apps Script always returns 200, so we need to check the response
                 const result = await response.json();
                 updateConnectionStatus(true);
                 return result;
@@ -591,7 +590,7 @@
             } finally {
                 showLoading(false);
             }
-        }
+        }                }
 
         // Connection status
         function updateConnectionStatus(online) {
