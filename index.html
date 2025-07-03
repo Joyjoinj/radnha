@@ -55,7 +55,6 @@
             border-radius: 15px;
             box-shadow: 0 8px 25px rgba(0,0,0,0.1);
             transition: transform 0.3s ease;
-            margin-bottom: 20px;
         }
         .card-custom:hover {
             transform: translateY(-5px);
@@ -130,6 +129,14 @@
         .nav-pills .nav-link.active {
             background: linear-gradient(45deg, #667eea, #764ba2);
         }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .loading.show {
+            display: block;
+        }
         .status-indicator {
             display: inline-block;
             width: 12px;
@@ -148,6 +155,14 @@
             0% { opacity: 1; }
             50% { opacity: 0.5; }
             100% { opacity: 1; }
+        }
+        .api-setup-alert {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
         }
     </style>
 </head>
@@ -168,6 +183,15 @@
 
     <!-- Main Application -->
     <div id="mainApp" class="main-container hidden">
+        <!-- API Setup Alert -->
+        <div id="apiSetupAlert" class="api-setup-alert">
+            <div class="container">
+                <h6><i class="fas fa-exclamation-triangle me-2"></i>ตั้งค่า API</h6>
+                <p class="mb-2">กรุณาใส่ URL ของ Google Apps Script Web App ที่ Deploy แล้วในไฟล์ HTML บรรทัดที่ระบุ</p>
+                <small>สถานะ API: <span id="apiStatus" class="fw-bold text-danger">ยังไม่ได้ตั้งค่า</span></small>
+            </div>
+        </div>
+
         <!-- Navigation -->
         <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
             <div class="container">
@@ -178,9 +202,9 @@
                 <div class="d-flex align-items-center">
                     <div class="me-3">
                         <span class="status-indicator" id="connectionStatus"></span>
-                        <small id="connectionText">ออฟไลน์</small>
+                        <small id="connectionText">กำลังเชื่อมต่อ...</small>
                     </div>
-                    <span class="badge bg-success">
+                    <span class="badge bg-success me-3">
                         <i class="fas fa-calendar me-1"></i>
                         <span id="currentDate"></span>
                     </span>
@@ -189,6 +213,14 @@
         </nav>
 
         <div class="container py-4">
+            <!-- Loading indicator -->
+            <div id="loadingIndicator" class="loading">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">กำลังโหลดข้อมูล...</p>
+            </div>
+
             <!-- Tab Navigation -->
             <ul class="nav nav-pills justify-content-center mb-4" id="mainTabs">
                 <li class="nav-item">
@@ -256,7 +288,9 @@
                             <div class="qr-section mt-3">
                                 <h6><i class="fas fa-qrcode me-2"></i>QR Code สำหรับชำระเงิน</h6>
                                 <div id="qrCode" class="my-3">
-                                    <img src="qr-1.jpg" alt="QR Code ชำระเงิน" style="width: 150px; height: 150px; object-fit: contain; border-radius: 10px; border: 2px solid #e9ecef;">
+                                    <div style="width: 150px; height: 150px; background: #f8f9fa; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                        <i class="fas fa-qrcode fa-3x text-muted"></i>
+                                    </div>
                                 </div>
                                 <small class="text-muted">สแกนเพื่อจ่ายเงิน</small>
                             </div>
@@ -458,8 +492,8 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script>
-        // ใช้ URL ที่ถูกต้อง
-        const API_URL = 'https://script.google.com/macros/s/AKfycbz3IJcJ-z4h_1pa9YaNOABx8vaDf3CkiEt-b7VU88Y-SpxJc6ybFY0uwDf-nhF7nwM/exec';
+        // ⚠️ สำคัญ: ใส่ URL ของ Google Apps Script Web App ที่ Deploy แล้วตรงนี้
+        const API_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE';
         
         // Global variables
         let menuItems = [];
@@ -468,117 +502,121 @@
         let dailyExpenses = [];
         let allTransactions = [];
         let isOnline = false;
+        let isAPIConfigured = false;
 
-        // API Functions - ใช้ fetch แบบที่แก้ไขแล้ว
+        // Check if API is configured
+        function checkAPIConfiguration() {
+            isAPIConfigured = API_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE' && API_URL.trim() !== '';
+            
+            const alertElement = document.getElementById('apiSetupAlert');
+            const statusElement = document.getElementById('apiStatus');
+            
+            if (isAPIConfigured) {
+                alertElement.style.display = 'none';
+                statusElement.textContent = 'ตั้งค่าแล้ว';
+                statusElement.className = 'fw-bold text-success';
+            } else {
+                alertElement.style.display = 'block';
+                statusElement.textContent = 'ยังไม่ได้ตั้งค่า';
+                statusElement.className = 'fw-bold text-danger';
+            }
+            
+            return isAPIConfigured;
+        }
+
+        // API Functions with improved error handling
         async function callAPI(action, data = {}) {
+            if (!isAPIConfigured) {
+                console.log('API not configured, working offline');
+                return { success: false, offline: true };
+            }
+
+            showLoading(true);
             try {
-                console.log('🚀 API Call:', action, data);
-                
+                const payload = {
+                    action: action,
+                    ...data
+                };
+
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        action: action,
-                        ...data
-                    })
+                    body: JSON.stringify(payload)
                 });
 
-                console.log('📡 Response status:', response.status);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                // อ่าน response เป็น text ก่อน
-                const responseText = await response.text();
-                console.log('📝 Raw response:', responseText);
-
-                // พยายาม parse JSON
-                let result;
-                try {
-                    result = JSON.parse(responseText);
-                } catch (jsonError) {
-                    console.error('❌ JSON Parse Error:', jsonError);
-                    console.error('❌ Response text:', responseText);
-                    throw new Error(`Invalid JSON response: ${jsonError.message}`);
-                }
-
-                console.log('✅ API Response:', result);
+                // Apps Script always returns 200, so we need to check the response
+                const result = await response.json();
                 updateConnectionStatus(true);
                 return result;
-                
+
             } catch (error) {
-                console.error('❌ API Call failed:', error);
+                console.error('API Error:', error);
                 updateConnectionStatus(false);
                 return { success: false, error: error.message };
+            } finally {
+                showLoading(false);
             }
         }
 
         async function getFromAPI(action, params = {}) {
+            if (!isAPIConfigured) {
+                console.log('API not configured, working offline');
+                return { success: false, offline: true };
+            }
+
+            showLoading(true);
             try {
-                const url = new URL(API_URL);
-                url.searchParams.append('action', action);
-                
-                Object.keys(params).forEach(key => {
-                    if (params[key] !== undefined && params[key] !== null) {
-                        url.searchParams.append(key, params[key]);
-                    }
+                const queryParams = new URLSearchParams({
+                    action: action,
+                    ...params
                 });
 
-                console.log('🔗 GET URL:', url.toString());
-
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json'
-                    }
+                const response = await fetch(`${API_URL}?${queryParams}`, {
+                    method: 'GET'
                 });
-
-                console.log('📡 GET Response status:', response.status);
 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
-                // อ่าน response เป็น text ก่อน
-                const responseText = await response.text();
-                console.log('📝 GET Raw response:', responseText);
-
-                // พยายาม parse JSON
-                let result;
-                try {
-                    result = JSON.parse(responseText);
-                } catch (jsonError) {
-                    console.error('❌ GET JSON Parse Error:', jsonError);
-                    console.error('❌ GET Response text:', responseText);
-                    throw new Error(`Invalid JSON response: ${jsonError.message}`);
-                }
-
-                console.log('✅ GET API Response:', result);
+                const result = await response.json();
                 updateConnectionStatus(true);
                 return result;
-                
             } catch (error) {
-                console.error('❌ GET API failed:', error);
+                console.error('API Error:', error);
                 updateConnectionStatus(false);
                 return { success: false, error: error.message };
+            } finally {
+                showLoading(false);
             }
         }
 
         // Connection status
         function updateConnectionStatus(online) {
-            isOnline = online;
+            isOnline = online && isAPIConfigured;
             const statusIndicator = document.getElementById('connectionStatus');
             const statusText = document.getElementById('connectionText');
             
-            if (online) {
+            if (isOnline) {
                 statusIndicator.className = 'status-indicator status-online';
                 statusText.textContent = 'เชื่อมต่อแล้ว';
+            } else if (!isAPIConfigured) {
+                statusIndicator.className = 'status-indicator status-offline';
+                statusText.textContent = 'ออฟไลน์ (ยังไม่ตั้งค่า API)';
             } else {
                 statusIndicator.className = 'status-indicator status-offline';
                 statusText.textContent = 'ออฟไลน์';
+            }
+        }
+
+        function showLoading(show) {
+            const loading = document.getElementById('loadingIndicator');
+            if (show) {
+                loading.classList.add('show');
+            } else {
+                loading.classList.remove('show');
             }
         }
 
@@ -590,6 +628,7 @@
         }
 
         async function initializeApp() {
+            checkAPIConfiguration();
             updateCurrentDate();
             await loadMenuFromAPI();
             await loadTodayDataFromAPI();
@@ -617,24 +656,45 @@
 
         // Menu functions with API
         async function loadMenuFromAPI() {
-            console.log('📋 Loading menu from API...');
             const result = await getFromAPI('getMenu');
             if (result.success && result.data) {
                 menuItems = result.data;
-                console.log('✅ Menu loaded:', menuItems);
             } else {
-                console.log('❌ Failed to load menu, using default');
-                // ใช้เมนูเริ่มต้นถ้าไม่สามารถโหลดจาก API ได้
-                menuItems = [
-                    { id: 1, name: 'ราดหน้าหมู', price: 50, category: 'ราดหน้า' },
-                    { id: 2, name: 'ราดหน้าทะเล', price: 60, category: 'ราดหน้า' },
-                    { id: 3, name: 'ราดหน้ารวม', price: 60, category: 'ราดหน้า' },
-                    { id: 4, name: 'ก๋วยเตี๋ยวหมู', price: 60, category: 'ก๋วยเตี๋ยว' },
-                    { id: 5, name: 'น้ำหวาน', price: 20, category: 'เครื่องดื่ม' },
-                    { id: 6, name: 'น้ำเปล่า', price: 10, category: 'เครื่องดื่ม' }
-                ];
+                // Fallback to default menu if API fails
+                menuItems = getDefaultMenu();
+                if (!result.offline) {
+                    showNotification('ไม่สามารถโหลดเมนูจาก API ได้ ใช้เมนูเริ่มต้น', 'warning');
+                }
             }
             loadMenuItems();
+        }
+
+        function getDefaultMenu() {
+            return [
+                { id: 1, name: 'ราดหน้าหมู', price: 50, category: 'ราดหน้า' },
+                { id: 2, name: 'ราดหน้าทะเล', price: 60, category: 'ราดหน้า' },
+                { id: 3, name: 'ราดหน้ารวม', price: 60, category: 'ราดหน้า' },
+                { id: 4, name: 'ราดหน้ารวมพิเศษ', price: 80, category: 'ราดหน้า' },
+                { id: 5, name: 'ราดหน้าหมูพิเศษ', price: 60, category: 'ราดหน้า' },
+                { id: 6, name: 'ราดหน้าทะเลพิเศษ', price: 80, category: 'ราดหน้า' },
+                { id: 7, name: 'ก๋วยเตี๋ยวหมู', price: 60, category: 'ก๋วยเตี๋ยว' },
+                { id: 8, name: 'เกาเหลาเลือกหมู', price: 60, category: 'ก๋วยเตี๋ยว' },
+                { id: 9, name: 'ก๋วยเตี๋ยวหมู พิเศษ', price: 80, category: 'ก๋วยเตี๋ยว' },
+                { id: 10, name: 'เกาเหลาเลือกหมู พิเศษ', price: 80, category: 'ก๋วยเตี๋ยว' },
+                { id: 11, name: 'น้ำหวาน', price: 20, category: 'เครื่องดื่ม' },
+                { id: 12, name: 'น้ำเปล่า 10 บาท', price: 10, category: 'เครื่องดื่ม' },
+                { id: 13, name: 'น้ำเปล่ายันฮี', price: 15, category: 'เครื่องดื่ม' },
+                { id: 14, name: 'น้ำเปล่าขวดใหญ่', price: 20, category: 'เครื่องดื่ม' },
+                { id: 15, name: 'น้ำหวาน 15 บาท', price: 15, category: 'เครื่องดื่ม' },
+                { id: 16, name: 'ใส่ไข่', price: 10, category: 'อื่นๆ' },
+                { id: 17, name: 'ข้าวเปล่า', price: 10, category: 'อื่นๆ' },
+                { id: 18, name: 'ข้าวกระเพราหมูสับ', price: 50, category: 'อื่นๆ' },
+                { id: 19, name: 'ข้าวกระเพราทะเล', price: 60, category: 'อื่นๆ' },
+                { id: 20, name: 'ข้าวผัดหมูหมัก', price: 50, category: 'อื่นๆ' },
+                { id: 21, name: 'ข้าวผัดทะเล', price: 60, category: 'อื่นๆ' },
+                { id: 22, name: 'หมูสะเต๊ะ ชุดเล็ก 8 ไม้', price: 60, category: 'ของหวาน' },
+                { id: 23, name: 'หมูสะเต๊ะ ชุดใหญ่ 16 ไม้', price: 120, category: 'ของหวาน' }
+            ];
         }
 
         async function loadTodayDataFromAPI() {
@@ -644,12 +704,26 @@
             const salesResult = await getFromAPI('getSales', { date: today });
             if (salesResult.success && salesResult.data) {
                 dailySales = salesResult.data;
+                // Convert to allTransactions format
+                salesResult.data.forEach(sale => {
+                    const existingIndex = allTransactions.findIndex(t => t.type === 'income' && t.id === sale.id);
+                    if (existingIndex === -1) {
+                        allTransactions.push({...sale, type: 'income'});
+                    }
+                });
             }
 
             // Load expenses
             const expensesResult = await getFromAPI('getExpenses', { date: today });
             if (expensesResult.success && expensesResult.data) {
                 dailyExpenses = expensesResult.data;
+                // Convert to allTransactions format
+                expensesResult.data.forEach(expense => {
+                    const existingIndex = allTransactions.findIndex(t => t.type === 'expense' && t.id === expense.id);
+                    if (existingIndex === -1) {
+                        allTransactions.push({...expense, type: 'expense'});
+                    }
+                });
             }
         }
 
@@ -699,9 +773,6 @@
                                 <span class="badge bg-success me-2">${item.price} บาท</span>
                                 <button class="btn btn-sm btn-outline-primary me-1" onclick="editMenuItem(${item.id})">
                                     <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger" onclick="deleteMenuItem(${item.id})">
-                                    <i class="fas fa-trash"></i>
                                 </button>
                             </div>
                         </div>
@@ -787,7 +858,7 @@
 
         async function processOrder() {
             if (currentOrder.length === 0) {
-                alert('กรุณาเลือกเมนูก่อนชำระเงิน');
+                showNotification('กรุณาเลือกเมนูก่อนชำระเงิน', 'warning');
                 return;
             }
 
@@ -796,25 +867,30 @@
                 id: Date.now(),
                 items: [...currentOrder],
                 total: total,
-                timestamp: new Date(),
+                timestamp: new Date().toISOString(),
                 date: new Date().toISOString().split('T')[0]
             };
 
-            // Save to API if online
+            // Save to API
             if (isOnline) {
-                await callAPI('addSale', { saleData: orderData });
+                const result = await callAPI('addSale', { saleData: orderData });
+                if (result.success) {
+                    showNotification('บันทึกการขายสำเร็จ!', 'success');
+                } else {
+                    showNotification('ไม่สามารถบันทึกลง Server ได้ แต่บันทึกในเครื่องแล้ว', 'warning');
+                }
             }
 
-            // Save locally
+            // Save locally as backup
             dailySales.push(orderData);
             allTransactions.push({...orderData, type: 'income'});
 
-            alert(`ชำระเงินสำเร็จ!\nยอดรวม: ${total.toLocaleString()} บาท`);
+            showNotification(`ชำระเงินสำเร็จ!\nยอดรวม: ${total.toLocaleString()} บาท`, 'success');
             clearOrder();
             updateSummary();
         }
 
-        // Expense Management
+        // Expense Management with API
         document.getElementById('expenseForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -824,26 +900,34 @@
                 amount: parseFloat(document.getElementById('expenseAmount').value),
                 category: document.getElementById('expenseCategory').value,
                 note: document.getElementById('expenseNote').value,
-                timestamp: new Date(),
+                timestamp: new Date().toISOString(),
                 date: new Date().toISOString().split('T')[0]
             };
 
-            // Save to API if online
+            // Save to API
             if (isOnline) {
-                await callAPI('addExpense', { expenseData });
+                const result = await callAPI('addExpense', { expenseData });
+                if (result.success) {
+                    showNotification('บันทึกรายจ่ายสำเร็จ!', 'success');
+                } else {
+                    showNotification('ไม่สามารถบันทึกลง Server ได้ แต่บันทึกในเครื่องแล้ว', 'warning');
+                }
             }
 
-            // Save locally
+            // Save locally as backup
             dailyExpenses.push(expenseData);
             allTransactions.push({...expenseData, type: 'expense'});
 
             document.getElementById('expenseForm').reset();
             updateTodayExpenses();
             updateSummary();
-            alert('บันทึกรายจ่ายสำเร็จ!');
+            
+            if (!isOnline) {
+                showNotification('บันทึกรายจ่ายสำเร็จ! (ออฟไลน์)', 'info');
+            }
         });
 
-        // Menu Management
+        // Menu Management with API
         document.getElementById('menuForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -856,15 +940,19 @@
 
             if (editId) {
                 // Edit existing menu
-                menuData.id = editId;
+                menuData.id = parseInt(editId);
+                
                 if (isOnline) {
-                    await callAPI('updateMenu', { menuData });
+                    const result = await callAPI('updateMenu', { menuData });
+                    if (!result.success) {
+                        showNotification('ไม่สามารถอัพเดตลง Server ได้ แต่อัพเดตในเครื่องแล้ว', 'warning');
+                    }
                 }
                 
                 const menuIndex = menuItems.findIndex(item => item.id == editId);
                 if (menuIndex !== -1) {
                     menuItems[menuIndex] = { ...menuItems[menuIndex], ...menuData };
-                    alert('แก้ไขเมนูสำเร็จ!');
+                    showNotification('แก้ไขเมนูสำเร็จ!', 'success');
                 }
                 cancelEdit();
             } else {
@@ -875,11 +963,14 @@
                 };
                 
                 if (isOnline) {
-                    await callAPI('addMenu', { menuData: newMenu });
+                    const result = await callAPI('addMenu', { menuData: newMenu });
+                    if (!result.success) {
+                        showNotification('ไม่สามารถบันทึกลง Server ได้ แต่บันทึกในเครื่องแล้ว', 'warning');
+                    }
                 }
                 
                 menuItems.push(newMenu);
-                alert('เพิ่มเมนูสำเร็จ!');
+                showNotification('เพิ่มเมนูสำเร็จ!', 'success');
             }
 
             document.getElementById('menuForm').reset();
@@ -916,25 +1007,6 @@
             cardHeader.className = 'card-header bg-success text-white';
         }
 
-        async function deleteMenuItem(menuId) {
-            const menuItem = menuItems.find(item => item.id === menuId);
-            if (!menuItem) return;
-
-            if (confirm(`ต้องการลบเมนู "${menuItem.name}" หรือไม่?`)) {
-                if (isOnline) {
-                    await callAPI('deleteMenu', { menuId });
-                }
-                
-                menuItems = menuItems.filter(item => item.id !== menuId);
-                loadMenuItems();
-
-                if (document.getElementById('editMenuId').value == menuId) {
-                    cancelEdit();
-                }
-                alert('ลบเมนูสำเร็จ!');
-            }
-        }
-
         function updateTodayExpenses() {
             const container = document.getElementById('todayExpenses');
             const today = new Date().toISOString().split('T')[0];
@@ -955,29 +1027,9 @@
                     <div class="text-end">
                         <strong class="text-danger">${expense.amount.toLocaleString()} บาท</strong>
                         <div class="small text-muted">${new Date(expense.timestamp).toLocaleTimeString('th-TH')}</div>
-                        <button class="btn btn-sm btn-outline-danger mt-2" onclick="deleteExpense(${expense.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
                     </div>
                 </div>
             `).join('');
-        }
-
-        async function deleteExpense(id) {
-            if (confirm('ต้องการลบรายการนี้หรือไม่?')) {
-                dailyExpenses = dailyExpenses.filter(exp => exp.id !== id);
-                allTransactions = allTransactions.filter(tran => !(tran.type === 'expense' && tran.id === id));
-                updateTodayExpenses();
-                updateSummary();
-            }
-        }
-
-        async function deleteSale(id) {
-            if (confirm('ต้องการลบออเดอร์นี้หรือไม่?')) {
-                dailySales = dailySales.filter(sale => sale.id !== id);
-                allTransactions = allTransactions.filter(tran => !(tran.type === 'income' && tran.id === id));
-                updateSummary();
-            }
         }
 
         function updateSummary() {
@@ -1086,11 +1138,6 @@
                                     <span class="${transaction.type === 'income' ? 'text-success' : 'text-danger'}">
                                         ${transaction.type === 'income' ? '+' : '-'}${(transaction.total || transaction.amount).toLocaleString()} บาท
                                     </span>
-                                    ${
-                                        transaction.type === 'income'
-                                            ? `<button class="btn btn-sm btn-outline-danger ms-2" onclick="deleteSale(${transaction.id})"><i class="fas fa-trash"></i></button>`
-                                            : `<button class="btn btn-sm btn-outline-danger ms-2" onclick="deleteExpense(${transaction.id})"><i class="fas fa-trash"></i></button>`
-                                    }
                                 </div>
                             `).join('')
                         }
@@ -1102,38 +1149,50 @@
         function exportToExcel() {
             const selectedMonth = document.getElementById('monthSelector').value;
             if (!selectedMonth) {
-                alert('กรุณาเลือกเดือนที่ต้องการส่งออก');
+                showNotification('กรุณาเลือกเดือนที่ต้องการส่งออก', 'warning');
                 return;
             }
 
-            alert('ฟีเจอร์ส่งออก Excel จะพร้อมใช้งานเมื่อเชื่อมต่อกับ Google Sheets\nขณะนี้ข้อมูลจะถูกแสดงในหน้าใหม่');
-            
             const [year, month] = selectedMonth.split('-');
             const monthName = new Date(year, month - 1).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
             
-            const exportData = `
-รายงานประจำเดือน ${monthName}
+            const startDate = new Date(year, month - 1, 1);
+            const endDate = new Date(year, month, 0);
+
+            const monthlyTransactions = allTransactions.filter(transaction => {
+                const transactionDate = new Date(transaction.timestamp);
+                return transactionDate >= startDate && transactionDate <= endDate;
+            });
+
+            const monthlyIncome = monthlyTransactions
+                .filter(t => t.type === 'income')
+                .reduce((sum, t) => sum + t.total, 0);
+            
+            const monthlyExpense = monthlyTransactions
+                .filter(t => t.type === 'expense')
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            const exportData = `รายงานประจำเดือน ${monthName}
 ร้านราดหน้ามหาชน
 ================================
 
-รายรับ:
-${dailySales.map(sale => 
+สรุป:
+รายรับ: ${monthlyIncome.toLocaleString()} บาท
+รายจ่าย: ${monthlyExpense.toLocaleString()} บาท
+กำไร: ${(monthlyIncome - monthlyExpense).toLocaleString()} บาท
+
+รายละเอียดรายรับ:
+${monthlyTransactions.filter(t => t.type === 'income').map(sale => 
     `${new Date(sale.timestamp).toLocaleDateString('th-TH')} - ${sale.total.toLocaleString()} บาท`
 ).join('\n')}
 
-รายจ่าย:
-${dailyExpenses.map(expense => 
+รายละเอียดรายจ่าย:
+${monthlyTransactions.filter(t => t.type === 'expense').map(expense => 
     `${new Date(expense.timestamp).toLocaleDateString('th-TH')} - ${expense.item} - ${expense.amount.toLocaleString()} บาท`
 ).join('\n')}
             `;
 
-            const blob = new Blob([exportData], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `รายงานร้านราดหน้ามหาชน-${selectedMonth}.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
+            downloadTextFile(exportData, `รายงานร้านราดหน้ามหาชน-${selectedMonth}.txt`);
         }
 
         function exportDailyReport() {
@@ -1148,8 +1207,7 @@ ${dailyExpenses.map(expense =>
                 .filter(exp => exp.date === today)
                 .reduce((sum, exp) => sum + exp.amount, 0);
 
-            const reportData = `
-รายงานประจำวัน ${todayDate}
+            const reportData = `รายงานประจำวัน ${todayDate}
 ร้านราดหน้ามหาชน
 ================================
 
@@ -1169,42 +1227,39 @@ ${dailyExpenses.filter(exp => exp.date === today).map(expense =>
 ).join('\n')}
             `;
 
-            const blob = new Blob([reportData], { type: 'text/plain;charset=utf-8' });
+            downloadTextFile(reportData, `รายงานวันนี้-${today}.txt`);
+        }
+
+        function downloadTextFile(content, filename) {
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `รายงานวันนี้-${today}.txt`;
+            a.download = filename;
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
 
-        // ฟังก์ชันทดสอบ API
-        async function testAPI() {
-            try {
-                console.log('🧪 Testing API connection...');
-                
-                // ทดสอบ ping
-                const pingResult = await getFromAPI('ping');
-                console.log('Ping result:', pingResult);
-                
-                // ทดสอบ health check
-                const healthResult = await getFromAPI('healthCheck');
-                console.log('Health check result:', healthResult);
-                
-                // ทดสอบ get menu
-                const menuResult = await getFromAPI('getMenu');
-                console.log('Menu result:', menuResult);
-                
-                if (pingResult.success || healthResult.success || menuResult.success) {
-                    alert('✅ API ทำงานได้ปกติ! ตรวจสอบ Console เพื่อดูรายละเอียด');
-                } else {
-                    alert('❌ API ไม่สามารถเชื่อมต่อได้');
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `alert alert-${type === 'success' ? 'success' : type === 'warning' ? 'warning' : type === 'error' ? 'danger' : 'info'} alert-dismissible fade show position-fixed`;
+            notification.style.cssText = 'top: 80px; right: 20px; z-index: 9999; max-width: 400px;';
+            notification.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+
+            document.body.appendChild(notification);
+
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
                 }
-                
-            } catch (error) {
-                console.error('API test failed:', error);
-                alert('❌ API Test Failed: ' + error.message);
-            }
+            }, 5000);
         }
 
         // Initialize the app when page loads
@@ -1219,28 +1274,17 @@ ${dailyExpenses.filter(exp => exp.date === today).map(expense =>
 
             // Test API connection on load
             setTimeout(async () => {
-                console.log('🔄 Testing API connection...');
-                try {
-                    const testResult = await getFromAPI('ping');
-                    updateConnectionStatus(testResult.success);
-                    console.log('API Connection:', testResult.success ? 'Success' : 'Failed');
-                } catch (error) {
+                if (isAPIConfigured) {
+                    try {
+                        const testResult = await getFromAPI('getMenu');
+                        updateConnectionStatus(testResult.success);
+                    } catch (error) {
+                        updateConnectionStatus(false);
+                    }
+                } else {
                     updateConnectionStatus(false);
-                    console.log('API Connection: Failed -', error.message);
                 }
-            }, 2000);
-
-            // เพิ่มปุ่มทดสอบ API ใน Console
-            console.log('🍜 ราดหน้า API Client loaded!');
-            console.log('📝 Available test functions:');
-            console.log('- testAPI() - ทดสอบการเชื่อมต่อ API');
-            console.log('- getFromAPI("ping") - ทดสอบ ping');
-            console.log('- getFromAPI("getMenu") - ทดสอบดึงเมนู');
-            
-            // ทำให้ฟังก์ชันทดสอบใช้งานได้ใน Console
-            window.testAPI = testAPI;
-            window.getFromAPI = getFromAPI;
-            window.callAPI = callAPI;
+            }, 1000);
         });
 
         // Sync data periodically if online
