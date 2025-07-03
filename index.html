@@ -493,7 +493,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script>
         // ⚠️ สำคัญ: ใส่ URL ของ Google Apps Script Web App ที่ Deploy แล้วตรงนี้
-        const API_URL = 'https://script.google.com/macros/s/AKfycbww6c5yMjCqFKue0KJxoz0VIcBdN7RI0PhlpJtNc8wQ0REfQZZr3fclYqf4anH33gCQ/exec';
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzeVNv-AM4OHwFsudnCYYJ9TqsUOculofc1iP8_xBz1yRbtPQwjEpQl6U7ku7Lfwppl/exec';
         
         // Global variables
         let menuItems = [];
@@ -506,7 +506,7 @@
 
         // Check if API is configured
         function checkAPIConfiguration() {
-            isAPIConfigured = API_URL !== 'https://script.google.com/macros/s/AKfycbzeVNv-AM4OHwFsudnCYYJ9TqsUOculofc1iP8_xBz1yRbtPQwjEpQl6U7ku7Lfwppl/exec' && API_URL.trim() !== '';
+            isAPIConfigured = API_URL !== 'https://script.google.com/macros/s/AKfycbzeVNv-AM4OHwFsudnCYYJ9TqsUOculofc1iP8_xBz1yRbtPQwjEpQl6U7ku7Lfwppl/exec' && API_URL.includes('script.google.com');
             
             const alertElement = document.getElementById('apiSetupAlert');
             const statusElement = document.getElementById('apiStatus');
@@ -524,29 +524,25 @@
             return isAPIConfigured;
         }
 
-        // API Functions - ใช้ GET requests เท่านั้นเพื่อหลีกเลี่ยง CORS
+        // API Functions
         async function callAPI(action, data = {}) {
             if (!isAPIConfigured) {
                 console.log('API not configured, working offline');
                 return { success: false, offline: true };
             }
 
-            showLoading(true); 
+            showLoading(true);
             try {
-                // แปลง data เป็น URL parameters สำหรับ GET request
                 const params = new URLSearchParams({
-                    action: action,
-                    ...data
+                    action: action
                 });
 
-                // สำหรับ complex data เช่น items array
                 if (data.saleData && data.saleData.items) {
                     params.set('id', data.saleData.id);
                     params.set('total', data.saleData.total);
                     params.set('date', data.saleData.date);
                     params.set('timestamp', data.saleData.timestamp);
                     params.set('items', encodeURIComponent(JSON.stringify(data.saleData.items)));
-                    params.delete('saleData');
                 }
 
                 if (data.expenseData) {
@@ -557,7 +553,6 @@
                     params.set('note', data.expenseData.note || '');
                     params.set('date', data.expenseData.date);
                     params.set('timestamp', data.expenseData.timestamp);
-                    params.delete('expenseData');
                 }
 
                 if (data.menuData) {
@@ -565,17 +560,12 @@
                     params.set('name', data.menuData.name);
                     params.set('price', data.menuData.price);
                     params.set('category', data.menuData.category);
-                    params.delete('menuData');
                 }
 
                 const url = `${API_URL}?${params}`;
                 console.log('Sending GET request to:', url);
 
-                const response = await fetch(url, {
-                    method: 'GET'
-                });
-
-                console.log('Response status:', response.status);
+                const response = await fetch(url, { method: 'GET' });
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -588,11 +578,7 @@
                 return result;
 
             } catch (error) {
-                console.error('API Error details:', {
-                    message: error.message,
-                    stack: error.stack,
-                    url: API_URL
-                });
+                console.error('API Error:', error);
                 updateConnectionStatus(false);
                 return { success: false, error: error.message };
             } finally {
@@ -616,11 +602,7 @@
                 const url = `${API_URL}?${queryParams}`;
                 console.log('Sending GET request to:', url);
 
-                const response = await fetch(url, {
-                    method: 'GET'
-                });
-
-                console.log('GET Response status:', response.status);
+                const response = await fetch(url, { method: 'GET' });
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -632,17 +614,13 @@
                 updateConnectionStatus(true);
                 return result;
             } catch (error) {
-                console.error('GET API Error details:', {
-                    message: error.message,
-                    stack: error.stack,
-                    url: API_URL
-                });
+                console.error('GET API Error:', error);
                 updateConnectionStatus(false);
                 return { success: false, error: error.message };
             } finally {
                 showLoading(false);
             }
-        }           
+        }
 
         // Connection status
         function updateConnectionStatus(online) {
@@ -711,7 +689,6 @@
             if (result.success && result.data) {
                 menuItems = result.data;
             } else {
-                // Fallback to default menu if API fails
                 menuItems = getDefaultMenu();
                 if (!result.offline) {
                     showNotification('ไม่สามารถโหลดเมนูจาก API ได้ ใช้เมนูเริ่มต้น', 'warning');
@@ -751,11 +728,9 @@
         async function loadTodayDataFromAPI() {
             const today = new Date().toISOString().split('T')[0];
             
-            // Load sales
             const salesResult = await getFromAPI('getSales', { date: today });
             if (salesResult.success && salesResult.data) {
                 dailySales = salesResult.data;
-                // Convert to allTransactions format
                 salesResult.data.forEach(sale => {
                     const existingIndex = allTransactions.findIndex(t => t.type === 'income' && t.id === sale.id);
                     if (existingIndex === -1) {
@@ -764,11 +739,9 @@
                 });
             }
 
-            // Load expenses
             const expensesResult = await getFromAPI('getExpenses', { date: today });
             if (expensesResult.success && expensesResult.data) {
                 dailyExpenses = expensesResult.data;
-                // Convert to allTransactions format
                 expensesResult.data.forEach(expense => {
                     const existingIndex = allTransactions.findIndex(t => t.type === 'expense' && t.id === expense.id);
                     if (existingIndex === -1) {
@@ -922,7 +895,6 @@
                 date: new Date().toISOString().split('T')[0]
             };
 
-            // Save to API
             if (isOnline) {
                 const result = await callAPI('addSale', { saleData: orderData });
                 if (result.success) {
@@ -932,7 +904,6 @@
                 }
             }
 
-            // Save locally as backup
             dailySales.push(orderData);
             allTransactions.push({...orderData, type: 'income'});
 
@@ -941,7 +912,6 @@
             updateSummary();
         }
 
-        // Expense Management with API
         document.getElementById('expenseForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -955,7 +925,6 @@
                 date: new Date().toISOString().split('T')[0]
             };
 
-            // Save to API
             if (isOnline) {
                 const result = await callAPI('addExpense', { expenseData });
                 if (result.success) {
@@ -965,7 +934,6 @@
                 }
             }
 
-            // Save locally as backup
             dailyExpenses.push(expenseData);
             allTransactions.push({...expenseData, type: 'expense'});
 
@@ -978,7 +946,6 @@
             }
         });
 
-        // Menu Management with API
         document.getElementById('menuForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -990,7 +957,6 @@
             };
 
             if (editId) {
-                // Edit existing menu
                 menuData.id = parseInt(editId);
                 
                 if (isOnline) {
@@ -1007,7 +973,6 @@
                 }
                 cancelEdit();
             } else {
-                // Add new menu
                 const newMenu = {
                     id: Date.now(),
                     ...menuData
@@ -1109,7 +1074,6 @@
 
             const [year, month] = selectedMonth.split('-');
             
-            // Try to get from API first
             if (isOnline) {
                 const result = await getFromAPI('getMonthlySummary', { year, month });
                 if (result.success && result.data) {
@@ -1118,7 +1082,6 @@
                 }
             }
 
-            // Fallback to local calculation
             const startDate = new Date(year, month - 1, 1);
             const endDate = new Date(year, month, 0);
 
@@ -1294,7 +1257,6 @@ ${dailyExpenses.filter(exp => exp.date === today).map(expense =>
         }
 
         function showNotification(message, type = 'info') {
-            // Create notification element
             const notification = document.createElement('div');
             notification.className = `alert alert-${type === 'success' ? 'success' : type === 'warning' ? 'warning' : type === 'error' ? 'danger' : 'info'} alert-dismissible fade show position-fixed`;
             notification.style.cssText = 'top: 80px; right: 20px; z-index: 9999; max-width: 400px;';
@@ -1305,7 +1267,6 @@ ${dailyExpenses.filter(exp => exp.date === today).map(expense =>
 
             document.body.appendChild(notification);
 
-            // Auto remove after 5 seconds
             setTimeout(() => {
                 if (notification.parentNode) {
                     notification.parentNode.removeChild(notification);
