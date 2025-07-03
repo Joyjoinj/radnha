@@ -178,10 +178,7 @@
                 <div class="d-flex align-items-center">
                     <div class="me-3">
                         <span class="status-indicator" id="connectionStatus"></span>
-                        <small id="connectionText">กำลังตรวจสอบ...</small>
-                        <button class="btn btn-sm btn-outline-primary ms-2" onclick="manualConnectionTest()" title="ทดสอบการเชื่อมต่อ">
-                            <i class="fas fa-sync"></i>
-                        </button>
+                        <small id="connectionText">ออฟไลน์</small>
                     </div>
                     <span class="badge bg-success">
                         <i class="fas fa-calendar me-1"></i>
@@ -461,86 +458,59 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script>
-        // ตั้งค่า API URL (ใส่ URL ของ Google Apps Script ตรงนี้)
-        const API_URL = 'https://script.google.com/macros/s/AKfycbwPMT-wy2QP0VW2pJb-NDGW2onu_p0GYXJVfrUJcW_oG7MFtlnHF4TRSXlo0JoLxOep/exec';
+        // ใช้ URL ที่ถูกต้อง
+        const API_URL = 'https://script.google.com/macros/s/AKfycbz3IJcJ-z4h_1pa9YaNOABx8vaDf3CkiEt-b7VU88Y-SpxJc6ybFY0uwDf-nhF7nwM/exec';
         
         // Global variables
-        let menuItems = [
-            // ราดหน้า
-            { id: 1, name: 'ราดหน้าหมู', price: 50, category: 'ราดหน้า' },
-            { id: 2, name: 'ราดหน้าทะเล', price: 60, category: 'ราดหน้า' },
-            { id: 3, name: 'ราดหน้ารวม', price: 60, category: 'ราดหน้า' },
-            { id: 4, name: 'ราดหน้ารวมพิเศษ', price: 80, category: 'ราดหน้า' },
-            { id: 5, name: 'ราดหน้าหมูพิเศษ', price: 60, category: 'ราดหน้า' },
-            { id: 6, name: 'ราดหน้าทะเลพิเศษ', price: 80, category: 'ราดหน้า' },
-            
-            // ก๋วยเตี๋ยว
-            { id: 7, name: 'ก๋วยเตี๋ยวหมู', price: 60, category: 'ก๋วยเตี๋ยว' },
-            { id: 8, name: 'เกาเหลาเลือกหมู', price: 60, category: 'ก๋วยเตี๋ยว' },
-            { id: 9, name: 'ก๋วยเตี๋ยวหมู พิเศษ', price: 80, category: 'ก๋วยเตี๋ยว' },
-            { id: 10, name: 'เกาเหลาเลือกหมู พิเศษ', price: 80, category: 'ก๋วยเตี๋ยว' },
-            
-            // เครื่องดื่ม
-            { id: 11, name: 'น้ำหวาน', price: 20, category: 'เครื่องดื่ม' },
-            { id: 12, name: 'น้ำเปล่า 10 บาท', price: 10, category: 'เครื่องดื่ม' },
-            { id: 13, name: 'น้ำเปล่ายันฮี', price: 15, category: 'เครื่องดื่ม' },
-            { id: 14, name: 'น้ำเปล่าขวดใหญ่', price: 20, category: 'เครื่องดื่ม' },
-            { id: 15, name: 'น้ำหวาน 15 บาท', price: 15, category: 'เครื่องดื่ม' },
-            
-            // อื่นๆ
-            { id: 16, name: 'ใส่ไข่', price: 10, category: 'อื่นๆ' },
-            { id: 17, name: 'ข้าวเปล่า', price: 10, category: 'อื่นๆ' },
-            { id: 18, name: 'ข้าวกระเพราหมูสับ', price: 50, category: 'อื่นๆ' },
-            { id: 19, name: 'ข้าวกระเพราทะเล', price: 60, category: 'อื่นๆ' },
-            { id: 20, name: 'ข้าวผัดหมูหมัก', price: 50, category: 'อื่นๆ' },
-            { id: 21, name: 'ข้าวผัดทะเล', price: 60, category: 'อื่นๆ' },
-            
-            // ของหวาน
-            { id: 22, name: 'หมูสะเต๊ะ ชุดเล็ก 8 ไม้', price: 60, category: 'ของหวาน' },
-            { id: 23, name: 'หมูสะเต๊ะ ชุดใหญ่ 16 ไม้', price: 120, category: 'ของหวาน' }
-        ];
-        
+        let menuItems = [];
         let currentOrder = [];
         let dailySales = [];
         let dailyExpenses = [];
         let allTransactions = [];
         let isOnline = false;
 
-        // API Functions - แก้ไข CORS
+        // API Functions - ใช้ fetch แบบที่แก้ไขแล้ว
         async function callAPI(action, data = {}) {
             try {
-                const payload = {
-                    action: action,
-                    ...data
-                };
-
-                console.log('Sending API request:', payload);
-
-                // ใช้ no-cors mode สำหรับ POST requests
+                console.log('🚀 API Call:', action, data);
+                
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // สำคัญ! แก้ปัญหา CORS
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        action: action,
+                        ...data
+                    })
                 });
 
-                console.log('Response (no-cors mode):', response);
-
-                // เมื่อใช้ no-cors จะไม่สามารถอ่าน response ได้
-                // แต่ถ้า request ผ่านไป response.type จะเป็น 'opaque'
-                if (response.type === 'opaque') {
-                    console.log('✅ Request sent successfully (no-cors mode)');
-                    updateConnectionStatus(true);
-                    return { success: true, message: 'Request sent successfully' };
-                } else {
-                    console.log('⚠️ Request may have failed');
-                    updateConnectionStatus(false);
-                    return { success: false, error: 'Request failed' };
+                console.log('📡 Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
+
+                // อ่าน response เป็น text ก่อน
+                const responseText = await response.text();
+                console.log('📝 Raw response:', responseText);
+
+                // พยายาม parse JSON
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                } catch (jsonError) {
+                    console.error('❌ JSON Parse Error:', jsonError);
+                    console.error('❌ Response text:', responseText);
+                    throw new Error(`Invalid JSON response: ${jsonError.message}`);
+                }
+
+                console.log('✅ API Response:', result);
+                updateConnectionStatus(true);
+                return result;
+                
             } catch (error) {
-                console.error('API call failed:', error);
+                console.error('❌ API Call failed:', error);
                 updateConnectionStatus(false);
                 return { success: false, error: error.message };
             }
@@ -548,109 +518,52 @@
 
         async function getFromAPI(action, params = {}) {
             try {
-                const queryParams = new URLSearchParams({
-                    action: action,
-                    ...params
+                const url = new URL(API_URL);
+                url.searchParams.append('action', action);
+                
+                Object.keys(params).forEach(key => {
+                    if (params[key] !== undefined && params[key] !== null) {
+                        url.searchParams.append(key, params[key]);
+                    }
                 });
 
-                const url = `${API_URL}?${queryParams}`;
-                console.log('Getting from API:', url);
+                console.log('🔗 GET URL:', url.toString());
 
-                // ใช้ JSONP สำหรับ GET requests เพื่อหลีกเลี่ยง CORS
-                return await fetchWithJSONP(url);
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                console.log('📡 GET Response status:', response.status);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                // อ่าน response เป็น text ก่อน
+                const responseText = await response.text();
+                console.log('📝 GET Raw response:', responseText);
+
+                // พยายาม parse JSON
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                } catch (jsonError) {
+                    console.error('❌ GET JSON Parse Error:', jsonError);
+                    console.error('❌ GET Response text:', responseText);
+                    throw new Error(`Invalid JSON response: ${jsonError.message}`);
+                }
+
+                console.log('✅ GET API Response:', result);
+                updateConnectionStatus(true);
+                return result;
+                
             } catch (error) {
-                console.error('GET API failed:', error);
+                console.error('❌ GET API failed:', error);
                 updateConnectionStatus(false);
                 return { success: false, error: error.message };
-            }
-        }
-
-        // ฟังก์ชัน JSONP สำหรับหลีกเลี่ยง CORS
-        function fetchWithJSONP(url) {
-            return new Promise((resolve, reject) => {
-                // สร้าง callback function ที่ unique
-                const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
-                
-                // เพิ่ม callback parameter
-                const urlWithCallback = url + '&callback=' + callbackName;
-                
-                // สร้าง script element
-                const script = document.createElement('script');
-                script.src = urlWithCallback;
-                
-                // กำหนด timeout
-                const timeout = setTimeout(() => {
-                    cleanup();
-                    reject(new Error('JSONP request timeout'));
-                }, 10000);
-                
-                // ฟังก์ชันทำความสะอาด
-                function cleanup() {
-                    if (script.parentNode) {
-                        script.parentNode.removeChild(script);
-                    }
-                    if (window[callbackName]) {
-                        delete window[callbackName];
-                    }
-                    clearTimeout(timeout);
-                }
-                
-                // กำหนด callback function
-                window[callbackName] = function(data) {
-                    cleanup();
-                    console.log('JSONP response:', data);
-                    updateConnectionStatus(true);
-                    resolve(data);
-                };
-                
-                // จัดการ error
-                script.onerror = function() {
-                    cleanup();
-                    console.error('JSONP script error');
-                    updateConnectionStatus(false);
-                    reject(new Error('JSONP script failed to load'));
-                };
-                
-                // เพิ่ม script ไปใน DOM
-                document.head.appendChild(script);
-            });
-        }
-
-        // ฟังก์ชันทดสอบการเชื่อมต่อแบบง่าย
-        async function testSimpleConnection() {
-            try {
-                console.log('Testing simple connection...');
-                
-                // ลองใช้ Image request เพื่อทดสอบ basic connectivity
-                return new Promise((resolve) => {
-                    const img = new Image();
-                    const testUrl = API_URL + '?action=ping&test=' + Date.now();
-                    
-                    img.onload = function() {
-                        console.log('✅ Basic connection test passed');
-                        updateConnectionStatus(true);
-                        resolve(true);
-                    };
-                    
-                    img.onerror = function() {
-                        console.log('❌ Basic connection test failed');
-                        updateConnectionStatus(false);
-                        resolve(false);
-                    };
-                    
-                    // Set timeout
-                    setTimeout(() => {
-                        console.log('⏰ Connection test timeout');
-                        updateConnectionStatus(false);
-                        resolve(false);
-                    }, 5000);
-                    
-                    img.src = testUrl;
-                });
-            } catch (error) {
-                console.error('Simple connection test error:', error);
-                updateConnectionStatus(false);
-                return false;
             }
         }
 
@@ -660,30 +573,13 @@
             const statusIndicator = document.getElementById('connectionStatus');
             const statusText = document.getElementById('connectionText');
             
-            console.log('Updating connection status:', online ? 'ONLINE' : 'OFFLINE');
-            
             if (online) {
                 statusIndicator.className = 'status-indicator status-online';
                 statusText.textContent = 'เชื่อมต่อแล้ว';
-                statusText.style.color = '#28a745';
             } else {
                 statusIndicator.className = 'status-indicator status-offline';
                 statusText.textContent = 'ออฟไลน์';
-                statusText.style.color = '#dc3545';
             }
-        }
-
-        // เพิ่มปุ่มทดสอบการเชื่อมต่อ
-        function manualConnectionTest() {
-            console.log('Manual connection test triggered');
-            testAPIConnection().then(result => {
-                if (result) {
-                    alert('✅ เชื่อมต่อ API สำเร็จ!');
-                    loadMenuFromAPI();
-                } else {
-                    alert('❌ ไม่สามารถเชื่อมต่อ API ได้\nกรุณาตรวจสอบ:\n- URL ของ Google Apps Script\n- สิทธิ์การเข้าถึง\n- การเชื่อมต่ออินเทอร์เน็ต');
-                }
-            });
         }
 
         // Initialize app
@@ -695,59 +591,10 @@
 
         async function initializeApp() {
             updateCurrentDate();
+            await loadMenuFromAPI();
+            await loadTodayDataFromAPI();
             setDefaultMonth();
             updateSummary();
-            
-            // แสดง loading
-            console.log('Initializing app...');
-            
-            // ทดสอบการเชื่อมต่อทันที
-            console.log('Testing immediate connection...');
-            const connectionTest = await testAPIConnection();
-            
-            if (connectionTest) {
-                console.log('✅ Connection successful, loading data...');
-                await loadMenuFromAPI();
-                await loadTodayDataFromAPI();
-                updateSummary();
-            } else {
-                console.log('⚠️ Connection failed, using offline mode');
-                loadMenuItems(); // ใช้เมนูเริ่มต้น
-            }
-        }
-
-        // ฟังก์ชันทดสอบการเชื่อมต่อ
-        async function testAPIConnection() {
-            try {
-                console.log('Testing API connection...');
-                
-                // ลองใช้วิธีง่ายๆ ก่อน
-                const basicTest = await testSimpleConnection();
-                if (basicTest) {
-                    return true;
-                }
-                
-                // ถ้าไม่ได้ ลองใช้ JSONP
-                console.log('Trying JSONP method...');
-                try {
-                    const result = await fetchWithJSONP(API_URL + '?action=healthCheck');
-                    if (result && result.success) {
-                        updateConnectionStatus(true);
-                        return true;
-                    }
-                } catch (jsonpError) {
-                    console.log('JSONP also failed:', jsonpError);
-                }
-                
-                // สุดท้ายถ้าไม่ได้เลย ให้ถือว่าเป็น offline mode
-                console.log('All connection methods failed, using offline mode');
-                updateConnectionStatus(false);
-                return false;
-            } catch (error) {
-                console.error('Connection test error:', error);
-                updateConnectionStatus(false);
-                return false;
-            }
         }
 
         function updateCurrentDate() {
@@ -770,9 +617,22 @@
 
         // Menu functions with API
         async function loadMenuFromAPI() {
+            console.log('📋 Loading menu from API...');
             const result = await getFromAPI('getMenu');
             if (result.success && result.data) {
                 menuItems = result.data;
+                console.log('✅ Menu loaded:', menuItems);
+            } else {
+                console.log('❌ Failed to load menu, using default');
+                // ใช้เมนูเริ่มต้นถ้าไม่สามารถโหลดจาก API ได้
+                menuItems = [
+                    { id: 1, name: 'ราดหน้าหมู', price: 50, category: 'ราดหน้า' },
+                    { id: 2, name: 'ราดหน้าทะเล', price: 60, category: 'ราดหน้า' },
+                    { id: 3, name: 'ราดหน้ารวม', price: 60, category: 'ราดหน้า' },
+                    { id: 4, name: 'ก๋วยเตี๋ยวหมู', price: 60, category: 'ก๋วยเตี๋ยว' },
+                    { id: 5, name: 'น้ำหวาน', price: 20, category: 'เครื่องดื่ม' },
+                    { id: 6, name: 'น้ำเปล่า', price: 10, category: 'เครื่องดื่ม' }
+                ];
             }
             loadMenuItems();
         }
@@ -1318,6 +1178,35 @@ ${dailyExpenses.filter(exp => exp.date === today).map(expense =>
             URL.revokeObjectURL(url);
         }
 
+        // ฟังก์ชันทดสอบ API
+        async function testAPI() {
+            try {
+                console.log('🧪 Testing API connection...');
+                
+                // ทดสอบ ping
+                const pingResult = await getFromAPI('ping');
+                console.log('Ping result:', pingResult);
+                
+                // ทดสอบ health check
+                const healthResult = await getFromAPI('healthCheck');
+                console.log('Health check result:', healthResult);
+                
+                // ทดสอบ get menu
+                const menuResult = await getFromAPI('getMenu');
+                console.log('Menu result:', menuResult);
+                
+                if (pingResult.success || healthResult.success || menuResult.success) {
+                    alert('✅ API ทำงานได้ปกติ! ตรวจสอบ Console เพื่อดูรายละเอียด');
+                } else {
+                    alert('❌ API ไม่สามารถเชื่อมต่อได้');
+                }
+                
+            } catch (error) {
+                console.error('API test failed:', error);
+                alert('❌ API Test Failed: ' + error.message);
+            }
+        }
+
         // Initialize the app when page loads
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('[data-bs-toggle="pill"]').forEach(tab => {
@@ -1330,29 +1219,28 @@ ${dailyExpenses.filter(exp => exp.date === today).map(expense =>
 
             // Test API connection on load
             setTimeout(async () => {
-                console.log('Testing API connection...');
+                console.log('🔄 Testing API connection...');
                 try {
-                    // ทดสอบการเชื่อมต่อ
-                    const testResult = await getFromAPI('healthCheck');
-                    console.log('Connection test result:', testResult);
-                    
-                    if (testResult && testResult.success) {
-                        updateConnectionStatus(true);
-                        console.log('✅ API connection successful');
-                        
-                        // โหลดข้อมูลเริ่มต้น
-                        await loadMenuFromAPI();
-                        await loadTodayDataFromAPI();
-                        updateSummary();
-                    } else {
-                        console.log('❌ API connection failed:', testResult);
-                        updateConnectionStatus(false);
-                    }
+                    const testResult = await getFromAPI('ping');
+                    updateConnectionStatus(testResult.success);
+                    console.log('API Connection:', testResult.success ? 'Success' : 'Failed');
                 } catch (error) {
-                    console.error('❌ Connection test error:', error);
                     updateConnectionStatus(false);
+                    console.log('API Connection: Failed -', error.message);
                 }
-            }, 2000); // เพิ่มเวลารอเป็น 2 วินาที
+            }, 2000);
+
+            // เพิ่มปุ่มทดสอบ API ใน Console
+            console.log('🍜 ราดหน้า API Client loaded!');
+            console.log('📝 Available test functions:');
+            console.log('- testAPI() - ทดสอบการเชื่อมต่อ API');
+            console.log('- getFromAPI("ping") - ทดสอบ ping');
+            console.log('- getFromAPI("getMenu") - ทดสอบดึงเมนู');
+            
+            // ทำให้ฟังก์ชันทดสอบใช้งานได้ใน Console
+            window.testAPI = testAPI;
+            window.getFromAPI = getFromAPI;
+            window.callAPI = callAPI;
         });
 
         // Sync data periodically if online
@@ -1362,51 +1250,6 @@ ${dailyExpenses.filter(exp => exp.date === today).map(expense =>
                 updateSummary();
             }
         }, 60000); // Sync every minute
-
-        // เพิ่มฟังก์ชัน debug สำหรับ console
-        window.debugAPI = {
-            testConnection: testAPIConnection,
-            testHealthCheck: async () => {
-                const result = await getFromAPI('healthCheck');
-                console.log('Health Check Result:', result);
-                return result;
-            },
-            testGetMenu: async () => {
-                const result = await getFromAPI('getMenu');
-                console.log('Get Menu Result:', result);
-                return result;
-            },
-            testAddMenu: async () => {
-                const result = await callAPI('addMenu', {
-                    menuData: {
-                        name: 'ทดสอบจาก Console',
-                        price: 99,
-                        category: 'ทดสอบ'
-                    }
-                });
-                console.log('Add Menu Result:', result);
-                return result;
-            },
-            showCurrentStatus: () => {
-                console.log('=== Current Status ===');
-                console.log('API URL:', API_URL);
-                console.log('Is Online:', isOnline);
-                console.log('Menu Items:', menuItems.length);
-                console.log('Current Order:', currentOrder);
-                console.log('Daily Sales:', dailySales.length);
-                console.log('Daily Expenses:', dailyExpenses.length);
-            }
-        };
-
-        // เพิ่มข้อความแนะนำใน console
-        console.log('🚀 Restaurant Management System Loaded!');
-        console.log('💡 Debug commands available:');
-        console.log('   debugAPI.testConnection() - ทดสอบการเชื่อมต่อ');
-        console.log('   debugAPI.testHealthCheck() - ทดสอบ health check');
-        console.log('   debugAPI.testGetMenu() - ทดสอบดึงเมนู');
-        console.log('   debugAPI.testAddMenu() - ทดสอบเพิ่มเมนู');
-        console.log('   debugAPI.showCurrentStatus() - แสดงสถานะปัจจุบัน');
-        console.log('🔧 API URL:', API_URL);
     </script>
 </body>
 </html>
